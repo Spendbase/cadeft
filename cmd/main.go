@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/moov-io/cadeft"
+	"github.com/spendbase/cadeft"
 )
 
 func main() {

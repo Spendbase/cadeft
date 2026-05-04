@@ -1,4 +1,4 @@
-module github.com/moov-io/cadeft
+module github.com/spendbase/cadeft
 
 go 1.25.0
 
@@ -20,7 +20,6 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -16,7 +16,7 @@ import (
 type FileStreamer struct {
 	r              io.ReadSeeker
 	scanner        *bufio.Scanner
-	lineContents   string
+	lineContents   []rune
 	numTxnsPerLine int
 	currentTxn     int
 	currentLine    int
@@ -120,7 +120,7 @@ func (fs *FileStreamer) ScanTxn() (Transaction, error) {
 			return nil, fmt.Errorf("failed to read transaction line: %w", err)
 		}
 
-		fs.lineContents = line
+		fs.lineContents = []rune(line)
 
 		if len(fs.lineContents) == 0 || isFooterRecord(string(fs.lineContents[0])) {
 			return nil, io.EOF
@@ -134,7 +134,7 @@ func (fs *FileStreamer) ScanTxn() (Transaction, error) {
 
 	}
 
-	recordType, err := parseRecordType(fs.lineContents[:1])
+	recordType, err := parseRecordType(string(fs.lineContents[:1]))
 	if err != nil {
 		fs.currentTxn, fs.numTxnsPerLine = 0, 0
 		return nil, fmt.Errorf("unrecognized record type at line %d: %w", fs.currentLine, err)
@@ -149,43 +149,44 @@ func (fs *FileStreamer) ScanTxn() (Transaction, error) {
 	txnsSegment := fs.lineContents[commonRecordDataLength:]
 	startIdx := segmentLength * fs.currentTxn
 	endIdx := segmentLength * (fs.currentTxn + 1)
+	seg := string(txnsSegment[startIdx:endIdx])
 
 	var txn Transaction
 	switch recordType {
 	case DebitRecord:
 		d := Debit{}
-		err = d.Parse(txnsSegment[startIdx:endIdx])
+		err = d.Parse(seg)
 		if err != nil {
 			return nil, NewParseError(err, "")
 		}
 		txn = &d
 	case CreditRecord:
 		c := Credit{}
-		if err := c.Parse(txnsSegment[startIdx:endIdx]); err != nil {
+		if err := c.Parse(seg); err != nil {
 			return nil, newStreamParseError(err, string(DebitRecord), fs.currentTxn, fs.currentLine)
 		}
 		txn = &c
 	case ReturnDebitRecord:
 		dr := DebitReturn{}
-		if err := dr.Parse(txnsSegment[startIdx:endIdx]); err != nil {
+		if err := dr.Parse(seg); err != nil {
 			return nil, newStreamParseError(err, string(ReturnDebitRecord), fs.currentTxn, fs.currentLine)
 		}
 		txn = &dr
 	case ReturnCreditRecord:
 		cr := CreditReturn{}
-		if err := cr.Parse(txnsSegment[startIdx:endIdx]); err != nil {
+		if err := cr.Parse(seg); err != nil {
 			return nil, newStreamParseError(err, string(ReturnCreditRecord), fs.currentTxn, fs.currentLine)
 		}
 		txn = &cr
 	case CreditReverseRecord:
 		cr := CreditReverse{}
-		if err := cr.Parse(txnsSegment[startIdx:endIdx]); err != nil {
+		if err := cr.Parse(seg); err != nil {
 			return nil, newStreamParseError(err, string(CreditReverseRecord), fs.currentTxn, fs.currentLine)
 		}
 		txn = &cr
 	case DebitReverseRecord:
 		dr := DebitReverse{}
-		if err := dr.Parse(txnsSegment[startIdx:endIdx]); err != nil {
+		if err := dr.Parse(seg); err != nil {
 			return nil, newStreamParseError(err, string(DebitReverseRecord), fs.currentTxn, fs.currentLine)
 		}
 		txn = &dr
